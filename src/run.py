@@ -1,22 +1,35 @@
 
 # Set up PYTHONPATH
-import os
-import sys
-sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/..'))
+# Run from root directory: 'python -m src.run'
+#import os
+#import sys
+#sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/..'))
 
-#import src.market as market
-import src.model.market.experimental_exchange as exp
+import src.model.market.simulated_exchange as sim_exchange
 import src.model.wallet as wallet
-
-BTC_USD = 'btcusd'
+import src.model.securities as securities
 
 
 # testing
-ee = exp.ExperimentalExchange(symbols=[BTC_USD])
-stock_names = ee.GetSymbols()
-print 'stocks:', stock_names
+symbols = [securities.BTC]
+prices = {securities.BTC: 10}
+ee = sim_exchange.SimulatedExchange(symbols=symbols)
+print 'stocks:', ee.GetSymbols()
 
-my_wallet = wallet.Wallet(5.00)
-ee.Buy(BTC_USD, 2, my_wallet)
+my_wallet1 = wallet.Wallet({securities.USD: 10, securities.BTC: 10})
+my_wallet2 = wallet.Wallet({securities.USD: 10, securities.BTC: 10})
 
+print 'Before trade:'
+print '  buyer wallet: %s' % my_wallet1
+print '  seller wallet: %s' % my_wallet2
+
+# Place buy and sell orders.
+ee.Buy(securities.BTC, 1, my_wallet1, price=5)
+ee.Sell(securities.BTC, 1, my_wallet2, price=4)
+
+print 'After trade:'
+print '  buyer wallet: %s' % my_wallet1
+print '  seller wallet: %s' % my_wallet2
+
+print '\norderbook: %s' % ee.GetOrderbook()[securities.BTC]
 print 'done.'

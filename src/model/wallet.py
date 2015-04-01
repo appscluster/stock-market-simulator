@@ -1,9 +1,14 @@
 
+import copy
+
 
 class Wallet(object):
+  """Wallet containing multiple types of assets."""
 
-  def __init__(self, amount={}):
-    self.amounts = amount
+  def __init__(self, amounts={}):
+    # Make sure this wallet has its own copy of "amounts".
+    # Note: This is a shallow copy.
+    self.amounts = copy.copy(amounts)
 
   def GetAmount(self, symbol):
     """Get amount of asset in this wallet.
@@ -41,13 +46,12 @@ class Wallet(object):
       self.amounts[symbol] -= amount
     else:
       raise Exception('%s not in this wallet.' % symbol)
-      
+
   def __str__(self):
     """toString method"""
-    return 'foo'
     result = '('
     for symbol, amount in self.amounts.items():
-      result += '%s: %s' % (symbol, amount)
+      result += '%s: %s, ' % (symbol, amount)
     result += ')'
     return result
     
