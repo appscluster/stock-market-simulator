@@ -8,28 +8,35 @@
 import src.model.market.simulated_exchange as sim_exchange
 import src.model.wallet as wallet
 import src.model.securities as securities
+import src.model.trader.experimentalagent as agent
+import time
 
 
 # testing
 symbols = [securities.BTC]
 prices = {securities.BTC: 10}
-ee = sim_exchange.SimulatedExchange(symbols=symbols)
+ee = sim_exchange.SimulatedExchange(symbols=symbols, prices=prices)
 print 'stocks:', ee.GetSymbols()
 
-my_wallet1 = wallet.Wallet({securities.USD: 10, securities.BTC: 10})
-my_wallet2 = wallet.Wallet({securities.USD: 10, securities.BTC: 10})
+my_wallet1 = wallet.Wallet({securities.USD: 1000, securities.BTC: 10})
+my_wallet2 = wallet.Wallet({securities.USD: 1000, securities.BTC: 10})
+
+
 
 print 'Before trade:'
 print '  buyer wallet: %s' % my_wallet1
 print '  seller wallet: %s' % my_wallet2
 
 # Place buy and sell orders.
-ee.Buy(securities.BTC, 1, my_wallet1, price=5)
-ee.Sell(securities.BTC, 1, my_wallet2, price=4)
+agent1 = agent.ExperimentalAgent(my_wallet1, ee)
 
 print 'After trade:'
 print '  buyer wallet: %s' % my_wallet1
 print '  seller wallet: %s' % my_wallet2
+agent1.RandomStrategy()
 
 print '\norderbook: %s' % ee.GetOrderbook()[securities.BTC]
+print 'symbols: %s'% ee.GetSymbols()
+    
 print 'done.'
+    
