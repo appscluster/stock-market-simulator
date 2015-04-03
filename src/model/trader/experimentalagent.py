@@ -32,13 +32,13 @@ class ExperimentalAgent(agent.Agent):
             walletCash = self.wallet.GetAmount('usd')
             if walletCash > price:
                 amount = rand.randint(1, walletCash/price)
-                exchange.Buy(symbol, amount, wallet, buyPrice)
+                exchange.Buy(symbol, amount, self.wallet, buyPrice)
         if not buy:
             sellPrice = int(rand.gauss(price, 1))
             walletAmount = self.wallet.GetAmount(symbol)
             if walletAmount:
                 amount = rand.randint(1, walletAmount)
                 print("Wallet Amount is %s" % walletAmount)
-                exchange.Sell(symbol, amount, wallet, sellPrice)
+                exchange.Sell(symbol, amount, self.wallet, sellPrice)
 
     

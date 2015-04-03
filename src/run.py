@@ -22,21 +22,26 @@ my_wallet1 = wallet.Wallet({securities.USD: 1000, securities.BTC: 10})
 my_wallet2 = wallet.Wallet({securities.USD: 1000, securities.BTC: 10})
 
 
+while True:
+  print 'Before trade:'
+  print '  buyer wallet: %s' % my_wallet1
+  print '  seller wallet: %s' % my_wallet2
 
-print 'Before trade:'
-print '  buyer wallet: %s' % my_wallet1
-print '  seller wallet: %s' % my_wallet2
+  # Place buy and sell orders.
+  agent1 = agent.ExperimentalAgent(my_wallet1, ee)
+  agent2 = agent.ExperimentalAgent(my_wallet2, ee)
 
-# Place buy and sell orders.
-agent1 = agent.ExperimentalAgent(my_wallet1, ee)
+  print 'After trade:'
+  print '  buyer wallet: %s' % my_wallet1
+  print '  seller wallet: %s' % my_wallet2
+  agent1.RandomStrategy()
+  agent2.RandomStrategy()
 
-print 'After trade:'
-print '  buyer wallet: %s' % my_wallet1
-print '  seller wallet: %s' % my_wallet2
-agent1.RandomStrategy()
+  time.sleep(2)
 
-print '\norderbook: %s' % ee.GetOrderbook()[securities.BTC]
-print 'symbols: %s'% ee.GetSymbols()
+
+  print '\norderbook: %s' % ee.GetOrderbook()[securities.BTC]
+  print 'symbols: %s'% ee.GetSymbols()
     
 print 'done.'
     
