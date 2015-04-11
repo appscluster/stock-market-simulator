@@ -1,5 +1,5 @@
 
-import src.enum as enum
+import src.util.enum as enum
 
 
 Symbols = enum.enum(

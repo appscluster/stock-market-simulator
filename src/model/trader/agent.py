@@ -1,15 +1,16 @@
 
+
 class Agent(object):
-    def __init__(self, *args, **kwargs):
-        pass
+  """Base class for trading agents."""
 
-    def GetExchange(self, *args):
-        """Gets the exchange the trader wants to trade on"""
-        raise NotImplementedError()
+  def Trade(self):
+    """Invokes the agent's trade strategy."""
+    raise NotImplementedError('Override this method in a subclass.')
 
-    def GetWallet(self):
-        """Gets the wallet of assets specific to this trader"""
-        raise NotImplementedError()
+  def GetExchange(self, *args):
+    """Gets the exchange the trader wants to trade on"""
+    raise NotImplementedError('Override this method in a subclass.')
 
-
-
+  def GetWallet(self):
+    """Gets the wallet of assets specific to this trader"""
+    raise NotImplementedError('Override this method in a subclass.')

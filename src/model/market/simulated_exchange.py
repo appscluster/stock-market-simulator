@@ -1,8 +1,9 @@
+
 import collections
 import Queue
 
-import src.model.market.exchange as exchange
 import src.model.asset as asset
+import src.model.market.exchange as exchange
 import src.model.wallet as wallet
 
 
@@ -17,30 +18,41 @@ class SimulatedExchange(exchange.Exchange):
   # Define unlimited price for market orders.
   inf = float('inf')
 
-  def __init__(self, symbols=None, prices=None):
+  def __init__(self, *args, **kwargs):
     """Initialize the exchange.
-    
+
     Args:
       symbols: (optional) Symbols traded on this exchange.
       prices: (optional) Initial prices of assets on this exchange.
     """
     # List of stocks on this exchange.
-    self.symbols = symbols or []
+    self.symbols = kwargs['symbols']
     # Current stock prices.
-    self.prices = prices or {}
+    self.prices = kwargs['prices']
     # Order queues.
     self.bids = {}
     self.asks = {}
     # Keep track of order arrival.
     self.trade_id = 0
+    self.history = {}
     # Initialize price and orderbook for each stock.
     for symbol in self.symbols:
+      # price for this symbol
       if symbol not in self.prices:
         self.prices[symbol] = None
+      # orderbook for this symbol
       self.bids[symbol] = Queue.PriorityQueue()  #populate?
       self.asks[symbol] = Queue.PriorityQueue()  #populate?
-    # Assets stored on the exchange pending trade
+      # history for this symbol
+      if symbol not in self.history:
+        self.history[symbol] = []
+    # Assets stored on the exchange pending trade.
     self.wallet = wallet.Wallet()
+    # Logging
+    if 'logger' in kwargs:
+      self.logger = kwargs['logger']
+    else:
+      self.logger = None
 
   def GetSymbols(self):
     """Get list of all stocks traded on this exchange."""
@@ -76,6 +88,12 @@ class SimulatedExchange(exchange.Exchange):
         'asks': all_asks,
     }
     return orderbook
+
+  def GetHistory(self, symbol, limit=None):
+    """Get trade history for specified for asset."""
+    if limit:
+      return self.history[symbol][-limit:]
+    return self.history[symbol]
 
   def Buy(self, symbol, amount, wallet, price=inf):
     """Place buy order for desired amount of stock.
@@ -127,7 +145,9 @@ class SimulatedExchange(exchange.Exchange):
     )
     # Sort buy orders by (-price, timestamp).
     self.bids[symbol].put((-order.price, order.id, order))
-    print 'Placed bid: (price: %s, amount: %s)' % (price, amount)
+    if self.logger:
+      self.logger.debug(
+          'Placed bid: (price: %s, amount: %s)' % (price, amount))
     # Process orders.
     self._ProcessOrders(symbol)
 
@@ -169,7 +189,9 @@ class SimulatedExchange(exchange.Exchange):
     )
     # prioritize sell orders by (price, timestamp)
     self.asks[symbol].put((order.price, order.id, order))
-    print 'placed ask: %s' % str(order)
+    if self.logger:
+      self.logger.debug(
+          'Placed ask: (price: %s, amount: %s)' % (order.price, order.amount))
     # Process orders.
     self._ProcessOrders(symbol)
 
@@ -307,7 +329,6 @@ class SimulatedExchange(exchange.Exchange):
 
       # Determine trade price based on B and S.
       trade_price = self._DetermineTradePrice(highest_bid, lowest_ask)
-      print 'trade price: %s' % trade_price
       # Stop processing orders if there is no "breakeven".
       if trade_price is None:
         # Put orders back in the queue.
@@ -318,13 +339,20 @@ class SimulatedExchange(exchange.Exchange):
 
       # Determine trade amount.
       trade_amount = self._DetermineTradeAmount(highest_bid, lowest_ask)
-      print 'trade amount: %f' % trade_amount
 
       # Execute the trade.
       self._ExecuteTrade(trade_amount, trade_price, highest_bid, lowest_ask)
-      print 'trade executed'
+
+      if self.logger:
+        self.logger.debug(
+            'Trade executed (price: %s, amount: %s).' % (
+            trade_price, trade_amount))
 
       # Update market price.
       self.prices[symbol] = trade_price
+      # Record trade history.
+      self.history[symbol].append((trade_price, trade_amount))
 
-    print 'orders processed.'
+    # All matching trades resolved.
+    if self.logger:
+      self.logger.debug('Orders processed.')
