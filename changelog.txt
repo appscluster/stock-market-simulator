@@ -19,3 +19,6 @@ Implementation Checkpoint 2:
   - Runs the simulation for given number of timesteps.
 + Refactored trade strategy to its own class.
 + Started using python's built-in logging module to debug the simulation.
++ Added a momentum strategy
+  - Has a band to allow deviation from average trading
+  - Has a boolean input to allow anti-momentum traders
