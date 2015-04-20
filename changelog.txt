@@ -22,3 +22,14 @@ Implementation Checkpoint 2:
 + Added a momentum strategy
   - Has a band to allow deviation from average trading
   - Has a boolean input to allow anti-momentum traders
+
+Implementation Checkpoint 3:
++ Implemented GetHistory method.
+  - Get price candles of specified size (e.g. 1..n unit candles).
+  - Get specified number of candles.
++ Added some unit tests for the Simulated Exchange.
+  - Tests for order processing (buy/sell).
+  - Tests for GetHistory method.
++ Added command-line arguments to simulator.
+  - Number of trading agents.
+  - Number of timesteps to simulate.
