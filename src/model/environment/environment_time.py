@@ -8,6 +8,18 @@ class EnvironmentTime(object):
     """Returns the current time."""
     raise NotImplementedError('Override this method in a subclass.')
 
+  def TimeDelta(self, time, delta):
+    """Adds the given time plus the given number of time units.
+
+    Args:
+      time: Initial time.
+      delta: Number of time units to add to initial time.
+
+    Returns:
+      Sum of initial time and delta time units.
+    """
+    raise NotImplementedError('Override this method in a subclass.')
+
   def Step(self, units):
     """Steps the time forward by given number of time units.
 
@@ -38,6 +50,10 @@ class IntegerTime(EnvironmentTime):
     """
     return self.time
 
+  def TimeDelta(self, time, delta):
+    """Adds given time plus the given number of time units."""
+    return time + (delta * self.time_unit)
+
   def Step(self, steps=1):
     """Step time forward by given number of time units.
 
@@ -46,4 +62,4 @@ class IntegerTime(EnvironmentTime):
     Args:
       steps: Number of time units to move forward in time.
     """
-    self.time += self.time_unit * steps
+    self.time = self.TimeDelta(self.time, steps)

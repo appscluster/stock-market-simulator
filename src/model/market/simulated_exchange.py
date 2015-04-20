@@ -1,4 +1,6 @@
 
+
+import bisect
 import collections
 import Queue
 
@@ -22,31 +24,33 @@ class SimulatedExchange(exchange.Exchange):
     """Initialize the exchange.
 
     Args:
-      symbols: (optional) Symbols traded on this exchange.
-      prices: (optional) Initial prices of assets on this exchange.
+      time: Time reference used on this exchange.
+      symbols: Symbols traded on this exchange.
+      history: History for assets on this exchange.
     """
+    # Time reference for this exchange.
+    self.time = kwargs['time']
     # List of stocks on this exchange.
     self.symbols = kwargs['symbols']
-    # Current stock prices.
-    self.prices = kwargs['prices']
+    self.history = kwargs['history']
+    self.cached_history = {}
+    # Make sure there is history for every symbol.
+    for symbol in self.symbols:
+      if (symbol not in self.history) or (len(self.history[symbol]) == 0):
+        raise ValueError('No history given for symbol \'%s\'' % symbol)
+      # Candles are cached in (timestamp, candle_size, candles) format.
+      self.cached_history[symbol] = (None, None, None)
     # Order queues.
     self.bids = {}
     self.asks = {}
     # Keep track of order arrival.
     self.trade_id = 0
-    self.history = {}
-    # Initialize price and orderbook for each stock.
+    # Initialize orderbook for each stock.
     for symbol in self.symbols:
-      # price for this symbol
-      if symbol not in self.prices:
-        self.prices[symbol] = None
       # orderbook for this symbol
       self.bids[symbol] = Queue.PriorityQueue()  #populate?
       self.asks[symbol] = Queue.PriorityQueue()  #populate?
-      # history for this symbol
-      if symbol not in self.history:
-        self.history[symbol] = []
-    # Assets stored on the exchange pending trade.
+    # Trade pool where assets are held for trade.
     self.wallet = wallet.Wallet()
     # Logging
     if 'logger' in kwargs:
@@ -67,10 +71,11 @@ class SimulatedExchange(exchange.Exchange):
     Returns:
       Current price of the stock.
     """
-    if symbol in self.symbols:
-      return self.prices[symbol]
-    else:
+    if symbol not in self.symbols:
       raise Exception('%s not on this exchange.' % symbol)
+    # Return last trading price.
+    last_trade = self.history[symbol][-1]
+    return last_trade[1]
 
   def GetOrderbook(self, symbol):
     """Gets pending bids and asks for specified asset.
@@ -89,11 +94,98 @@ class SimulatedExchange(exchange.Exchange):
     }
     return orderbook
 
-  def GetHistory(self, symbol, limit=None):
-    """Get trade history for specified for asset."""
-    if limit:
-      return self.history[symbol][-limit:]
-    return self.history[symbol]
+  def GetHistory(self, symbol, limit=25, candle_size=1):
+    """Get trade history for specified for asset.
+
+    Args:
+      symbol: Name of the asset.
+      limit: Number of candles to retrieve.
+      candle_size: Number of time units per candle.
+
+    Returns:
+      List of (timestamp, closing price) candles.
+    """
+    # Current time on the exchange.
+    now = self.time.GetCurrentTime()
+
+    # Check the cache for candles.
+    cached_history = self.cached_history[symbol]  # (timestamp, candle_size, candles)
+    if cached_history[0] == now and cached_history[1] == candle_size:
+      if len(cached_history[2]) >= limit:
+        # Return cached candles.
+        return cached_history[2][-limit:]
+
+    # Make sure history exists for this asset.
+    history = self.history[symbol]
+    if len(history) == 0:
+      return []
+
+    # Determine time range for the candles.
+    # Candles end on current time.
+    candles_end = now
+    # Candles start limit number of candles before end point.
+    candles_start = self.time.TimeDelta(candles_end, -(candle_size * limit))
+
+    # History records are (timestamp, price, amount) tuples.
+    first_trade_timestamp = history[0][0]
+    # Make sure candle range is within history.
+    if candles_start < first_trade_timestamp:
+      # Not enough history for requested number of candles.
+      # Start candles in first interval containing history.
+      history_length = now - first_trade_timestamp
+      if candle_size <= history_length:
+        dist_to_candle_end = history_length % candle_size
+        dist_to_candle_start = candle_size - dist_to_candle_end
+      else:
+        # Candle size is greater than available history.
+        dist_to_candle_start = candle_size - history_length
+      # Adjust start of candles range.
+      candles_start = first_trade_timestamp - dist_to_candle_start
+
+    # Binary search to find the first record within the candles' time range.
+    # The candles contain price info from time (start, end].
+    # Exclude records with timestamp == start_candles (i.e. bisect right).
+    history_idx = bisect.bisect_right(history, (candles_start, self.inf, self.inf))
+
+    # Create dummy candle with initial price.
+    # Needed if first real candle has no trades (use previous candle price).
+    if history_idx > 0:
+      # Use last price point before candles start.
+      initial_price = history[history_idx - 1][1]
+    else:
+      # Use first historical price point.
+      initial_price = history[0][1]
+    dummy_candle = [-1, initial_price]
+
+    # Create candles with timestamps from (candles_start, candles_end].
+    time_idx = self.time.TimeDelta(candles_start, candle_size)
+    candles = [dummy_candle]
+    while time_idx <= candles_end:
+        # Create candle for this interval.
+        candle = [time_idx, None]
+        for record in history[history_idx:]:
+          # Each record is a (timestamp, price, amount) tuple.
+          if record[0] <= time_idx:
+            # Record is in this candle's interval.
+            candle[1] = record[1]
+            history_idx += 1
+          else:
+            break
+        # Make sure the candle has data.
+        if candle[1] is None:
+          # Use price of last candle. Dummy candle needed here.
+          candle[1] = candles[-1][1]
+        # Save candle and go to next time interval.
+        candles.append(candle)
+        time_idx = self.time.TimeDelta(time_idx, candle_size)
+
+    # Remove dummy candle.
+    candles = candles[1:]
+    # Cache the computed results.
+    to_cache = (now, candle_size, candles)
+    self.cached_history[symbol] = to_cache
+    # Return results.
+    return candles
 
   def Buy(self, symbol, amount, wallet, price=inf):
     """Place buy order for desired amount of stock.
@@ -221,7 +313,7 @@ class SimulatedExchange(exchange.Exchange):
         if abs(ask.price) == self.inf:
           # Seller also placed market order (at price -inf). Use market price.
           #print 'seller also placed market order'
-          trade_price = self.prices[bid.symbol]
+          trade_price = self.GetPrice(bid.symbol)
         else:
           # The buyer is willing to pay S.
           trade_price = ask.price
@@ -348,10 +440,9 @@ class SimulatedExchange(exchange.Exchange):
             'Trade executed (price: %s, amount: %s).' % (
             trade_price, trade_amount))
 
-      # Update market price.
-      self.prices[symbol] = trade_price
       # Record trade history.
-      self.history[symbol].append((trade_price, trade_amount))
+      timestamp = self.time.GetCurrentTime()
+      self.history[symbol].append((timestamp, trade_price, trade_amount))
 
     # All matching trades resolved.
     if self.logger:

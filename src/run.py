@@ -31,6 +31,9 @@ def main(argv):
   parser.add_argument('-timesteps', action="store", type=int, default=10)
   args = parser.parse_args(argv)
 
+  print 'num agents: %d' % args.num_agents
+  print 'num steps: %d' % args.timesteps
+
   # Logging
   if args.log_level:
     # Log level
@@ -52,23 +55,35 @@ def main(argv):
 
   # Create exchange.
   symbols = [asset.Symbols.BTC]
-  prices = {asset.Symbols.BTC: 100}
+  history = {asset.Symbols.BTC: [(-1, 100, -1)]}
+  print 'initial price: %s' % history[asset.Symbols.BTC][0][1]
   ee = sim_exchange.SimulatedExchange(
-      symbols=symbols, prices=prices, logger=logger)
+      time=time_obj, symbols=symbols, history=history, logger=logger)
 
   # Create simulated trading environment.
   sim_env = env.TradingEnvironment(
       time=time_obj, exchanges=[ee], logger=logger)
 
   # Generate agents.
-  strategy_dist = {trade_strategies.RandomStrategy(): 1.0}  # 100% random strategy
+  strategy_dist = {
+      trade_strategies.RandomStrategy(): 0.7,
+      trade_strategies.BandedMomentumStrategy(): 0.3,
+  }
+  print 'Strategy distribution:'
+  for strategy, ratio in strategy_dist.items():
+    print '  %s = %s%%' % (strategy.__class__.__name__, ratio * 100)
+  print
   initial_funds = {asset.Symbols.USD: 1000, asset.Symbols.BTC: 10}  # distr?
   sim_env.GenerateAgents(args.num_agents, strategy_dist, initial_funds)
 
   # Run the simulation.
+  start_time = time.time()
   sim_env.Run(timesteps=args.timesteps)
+  end_time = time.time()
+  time_elapsed = end_time - start_time
 
-  print 'final price: %f' % sim_env.exchanges[0].GetPrice(asset.Symbols.BTC)
+  print 'final price: %s' % sim_env.exchanges[0].GetPrice(asset.Symbols.BTC)
+  print 'simulation time: %.4f seconds' % time_elapsed
 
   print '\ndone.'
 
