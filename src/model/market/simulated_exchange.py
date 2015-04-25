@@ -110,6 +110,7 @@ class SimulatedExchange(exchange.Exchange):
 
     # Check the cache for candles.
     cached_history = self.cached_history[symbol]  # (timestamp, candle_size, candles)
+    # Saved as (cache_timestamp, size_of_cached_candles, cached_candles) item.
     if cached_history[0] == now and cached_history[1] == candle_size:
       if len(cached_history[2]) >= limit:
         # Return cached candles.
@@ -119,26 +120,30 @@ class SimulatedExchange(exchange.Exchange):
     history = self.history[symbol]
     if len(history) == 0:
       return []
+    # History records are (timestamp, price, amount) tuples.
+    first_trade_timestamp = history[0][0]
 
     # Determine time range for the candles.
     # Candles end on current time.
     candles_end = now
     # Candles start limit number of candles before end point.
-    candles_start = self.time.TimeDelta(candles_end, -(candle_size * limit))
+    if limit is None:
+      candles_start = self.time.TimeDelta(first_trade_timestamp, -1)
+    else:
+      candles_start = self.time.TimeDelta(candles_end, -(candle_size * limit))
 
-    # History records are (timestamp, price, amount) tuples.
-    first_trade_timestamp = history[0][0]
     # Make sure candle range is within history.
     if candles_start < first_trade_timestamp:
       # Not enough history for requested number of candles.
       # Start candles in first interval containing history.
       history_length = now - first_trade_timestamp
-      if candle_size <= history_length:
-        dist_to_candle_end = history_length % candle_size
-        dist_to_candle_start = candle_size - dist_to_candle_end
+      candle_length = self.time.TimeDelta(0, candle_size)
+      if candle_length <= history_length:
+        dist_to_candle_end = history_length % candle_length
+        dist_to_candle_start = candle_length - dist_to_candle_end
       else:
         # Candle size is greater than available history.
-        dist_to_candle_start = candle_size - history_length
+        dist_to_candle_start = candle_length - history_length
       # Adjust start of candles range.
       candles_start = first_trade_timestamp - dist_to_candle_start
 

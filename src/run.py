@@ -1,6 +1,8 @@
 
 import argparse
 import logging
+import matplotlib.pyplot as plt
+import numpy as np
 import sys
 import time
 
@@ -55,7 +57,7 @@ def main(argv):
 
   # Create exchange.
   symbols = [asset.Symbols.BTC]
-  history = {asset.Symbols.BTC: [(-1, 100, -1)]}
+  history = {asset.Symbols.BTC: [(-1, 20, -1)]}
   print 'initial price: %s' % history[asset.Symbols.BTC][0][1]
   ee = sim_exchange.SimulatedExchange(
       time=time_obj, symbols=symbols, history=history, logger=logger)
@@ -66,8 +68,9 @@ def main(argv):
 
   # Generate agents.
   strategy_dist = {
-      trade_strategies.RandomStrategy(): 0.7,
-      trade_strategies.BandedMomentumStrategy(): 0.3,
+      trade_strategies.RandomStrategy(): 0.6,
+      trade_strategies.BandedMomentumStrategy(): 0.1,
+      trade_strategies.BandedMomentumStrategy(momentum=False): 0.3,
   }
   print 'Strategy distribution:'
   for strategy, ratio in strategy_dist.items():
@@ -85,6 +88,51 @@ def main(argv):
   print 'final price: %s' % sim_env.exchanges[0].GetPrice(asset.Symbols.BTC)
   print 'simulation time: %.4f seconds' % time_elapsed
 
+  # Plot price history.
+  history = ee.GetHistory(asset.Symbols.BTC, limit=None)
+  #print 'got history length %d' % len(history)
+  t, p = zip(*history)
+  #print t
+  fig_hist = plt.figure()
+  ax1 = fig_hist.add_subplot(111)
+  ax1.plot(t, p, marker='x')
+  ax1.set_xlabel('Timestep')
+  ax1.set_ylabel('Price')
+  ax1.set_title('Price History for %s' % asset.Symbols.BTC)
+
+  # Get distribution of wealth.
+  agents = sim_env.GetAgents()
+  dollars = []
+  shares = []
+  for agent in agents:
+    w = agent.GetWallet()
+    d = w.GetAmount(asset.Symbols.USD)
+    s = w.GetAmount(asset.Symbols.BTC)
+    dollars.append(d)
+    shares.append(s)
+  cash_on_exchange = ee.wallet.GetAmount(asset.Symbols.USD)
+  shares_on_exchange = ee.wallet.GetAmount(asset.Symbols.BTC)
+  print '\ncash on exchange: %s' % cash_on_exchange
+  print 'shares on exchange: %s' % shares_on_exchange
+  # Plot distribution of dollars.
+  fig_dollars = plt.figure()
+  ax2 = fig_dollars.add_subplot(111)
+  n, bins, patches = ax2.hist(dollars, 25, facecolor='green')
+  ax2.set_xlabel('Amount of Cash')
+  ax2.set_ylabel('Number of Agents')
+  ax2.set_title('Distribution of Cash Among %d Traders' % len(agents))
+  ax2.grid(True)
+  # Plot distribution of shares.
+  fig_shares = plt.figure()
+  ax3 = fig_shares.add_subplot(111)
+  ax3.hist(shares, 25, facecolor='green')
+  #ax3.text(1, 1,'matplotlib', transform=ax3.transAxes, horizontalalignment='right', verticalalignment='top')
+  ax3.set_xlabel('Number of Shares')
+  ax3.set_ylabel('Number of Agents')
+  ax3.set_title('Distribution of Shares Among %d Traders' % len(agents))
+  ax3.grid(True)
+  # Show plots.
+  plt.show()
   print '\ndone.'
 
 

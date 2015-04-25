@@ -32,6 +32,10 @@ class TradingEnvironment(object):
     """Return time object used in this environment."""
     return self.time
 
+  def GetAgents(self):
+    """Gets agents in the environment."""
+    return self.agents
+
   def GenerateAgents(self, num_agents, strategy_distribution, initial_funds):
     """Use given distribution to create agents with various trading strategies.
 
