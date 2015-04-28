@@ -33,3 +33,7 @@ Implementation Checkpoint 3:
 + Added command-line arguments to simulator.
   - Number of trading agents.
   - Number of timesteps to simulate.
+
+Implementation Checkpoint 4:
++ Added price history visualization.
++ Added wealth distribution visualization.
