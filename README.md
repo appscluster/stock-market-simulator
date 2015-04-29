@@ -2,7 +2,11 @@
 
 Agent-based experimental market for testing trade strategies and forecasting price movements.
 
-The simulator depends on the numpy library.
+The simulator has the following Python package dependencies:
+
+* numpy
+
+* matplotlib
 
 ### Usage ###
 
